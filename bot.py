@@ -30,10 +30,14 @@ async def reload(ctx, extension):
 # --- Async startup to load cogs ---
 async def start_bot():
     async with bot:
-        # Load your cogs here
-        await bot.load_extension("cogs.moderation")
-        await bot.load_extension("cogs.roles")
-        await bot.load_extension("cogs.help")
+        # Load or reload cogs safely
+        for ext in ["cogs.moderation", "cogs.roles", "cogs.help"]:
+            if ext in bot.extensions:
+                await bot.reload_extension(ext)
+                print(f"🔄 Reloaded {ext}")
+            else:
+                await bot.load_extension(ext)
+                print(f"✅ Loaded {ext}")
 
         # Get token from environment variable
         token = os.getenv("DISCORD_TOKEN")
