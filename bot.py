@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import asyncio
+import os
 
 # --- Intents ---
 intents = discord.Intents.default()
@@ -27,14 +28,25 @@ async def reload(ctx, extension):
         await ctx.send(f"⚠️ Failed to reload {extension}: {e}")
 
 # --- Async startup to load cogs ---
-async def main():
+async def start_bot():
     async with bot:
         # Load your cogs here
         await bot.load_extension("cogs.moderation")
         await bot.load_extension("cogs.roles")
         await bot.load_extension("cogs.help")
-        # Start the bot
-        await bot.start("DISCORD_BOT_TOKEN")
 
-# --- Run the bot ---
-asyncio.run(main())
+        # Get token from environment variable
+        token = os.getenv("DISCORD_TOKEN")
+        if not token:
+            raise RuntimeError("❌ DISCORD_TOKEN environment variable not set!")
+
+        # Start the bot
+        await bot.start(token)
+
+# --- Run the bot indefinitely ---
+while True:
+    try:
+        asyncio.run(start_bot())
+    except Exception as e:
+        print(f"⚠️ Bot crashed with error: {e}. Restarting...")
+        continue
