@@ -1,7 +1,15 @@
+import os
+import asyncio
+import logging
 import discord
 from discord.ext import commands
-import asyncio
-import os
+
+# --- Logging ---
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+log = logging.getLogger("bot")
 
 # --- Intents ---
 intents = discord.Intents.default()
@@ -12,10 +20,24 @@ intents.members = True
 # --- Bot Setup ---
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# --- Load cogs before the bot starts ---
+@bot.event
+async def setup_hook():
+    for ext in ["cogs.moderation", "cogs.roles", "cogs.help"]:
+        try:
+            if ext in bot.extensions:
+                await bot.reload_extension(ext)
+                log.info(f"Reloaded {ext}")
+            else:
+                await bot.load_extension(ext)
+                log.info(f"Loaded {ext}")
+        except Exception as e:
+            log.error(f"Failed to load {ext}: {e}")
+
 # --- Events ---
 @bot.event
 async def on_ready():
-    print(f"✅ Bot is online as {bot.user}")
+    log.info(f"✅ Bot is online as {bot.user} (ID: {bot.user.id})")
 
 # --- Owner-only reload command ---
 @bot.command()
@@ -27,30 +49,16 @@ async def reload(ctx, extension):
     except Exception as e:
         await ctx.send(f"⚠️ Failed to reload {extension}: {e}")
 
-# --- Async startup to load cogs ---
-async def start_bot():
-    async with bot:
-        # Load or reload cogs safely
-        for ext in ["cogs.moderation", "cogs.roles", "cogs.help"]:
-            if ext in bot.extensions:
-                await bot.reload_extension(ext)
-                print(f"🔄 Reloaded {ext}")
-            else:
-                await bot.load_extension(ext)
-                print(f"✅ Loaded {ext}")
+def main():
+    token = os.getenv("DISCORD_TOKEN")
+    if not token:
+        raise RuntimeError("DISCORD_TOKEN environment variable not set")
 
-        # Get token from environment variable
-        token = os.getenv("DISCORD_TOKEN")
-        if not token:
-            raise RuntimeError("❌ DISCORD_TOKEN environment variable not set!")
+    # For local dev, bot.run handles loop lifecycle cleanly
+    bot.run(token)
 
-        # Start the bot
-        await bot.start(token)
-
-# --- Run the bot indefinitely ---
-while True:
+if __name__ == "__main__":
     try:
-        asyncio.run(start_bot())
+        main()
     except Exception as e:
-        print(f"⚠️ Bot crashed with error: {e}. Restarting...")
-        continue
+            log.exception(f"Bot failed to start: {e}")
